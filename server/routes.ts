@@ -215,7 +215,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Job not found or not completed" });
       }
 
-      const filename = `reddit-comments-${jobId}.json`;
+      // Use post title for filename, sanitized for file system
+      const postTitle = (job.jsonData as any)?.post?.title || `reddit-comments-${jobId}`;
+      const sanitizedTitle = postTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = `${sanitizedTitle}.json`;
+      
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.json(job.jsonData);
@@ -235,7 +239,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Job not found or not completed" });
       }
 
-      const filename = `reddit-comments-${jobId}.txt`;
+      // Use post title for filename, sanitized for file system
+      const postTitle = (job.jsonData as any)?.post?.title || `reddit-comments-${jobId}`;
+      const sanitizedTitle = postTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = `${sanitizedTitle}.txt`;
+      
       res.setHeader('Content-Type', 'text/plain');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(job.textData);

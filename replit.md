@@ -83,7 +83,9 @@ This is a full-stack web application that allows users to extract and download c
 - **Environment Variables**: `DATABASE_URL` for database connection
 
 ## Changelog
-- June 21, 2025. Initial setup
+- June 21, 2025: Initial setup with Reddit API integration
+- June 21, 2025: Added in-browser comment viewer modal with hierarchical display
+- June 21, 2025: Updated filename generation to use sanitized Reddit post titles instead of job IDs
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

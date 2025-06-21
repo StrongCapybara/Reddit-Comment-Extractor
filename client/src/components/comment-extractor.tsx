@@ -28,9 +28,31 @@ interface ExtractionResult {
   postTitle: string;
 }
 
+interface CommentViewData {
+  post: {
+    title: string;
+    author: string;
+    score: number;
+    num_comments: number;
+    created_utc: number;
+    url: string;
+  };
+  comments: Array<{
+    id: string;
+    parent_id: string | null;
+    author: string;
+    body: string;
+    score: number;
+    created_utc: number;
+    depth: number;
+  }>;
+}
+
 export function CommentExtractor({ credentials }: CommentExtractorProps) {
   const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
   const [progress, setProgress] = useState(0);
+  const [commentData, setCommentData] = useState<CommentViewData | null>(null);
+  const [showComments, setShowComments] = useState(false);
 
   const {
     register,
@@ -87,13 +109,31 @@ export function CommentExtractor({ credentials }: CommentExtractorProps) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `reddit-comments-${jobId}.${format === "json" ? "json" : "txt"}`;
+      
+      // Use post title for filename, sanitized for file system
+      const sanitizedTitle = extractionResult?.postTitle
+        ?.replace(/[^a-z0-9]/gi, '_')
+        ?.toLowerCase() || `reddit-comments-${jobId}`;
+      
+      a.download = `${sanitizedTitle}.${format === "json" ? "json" : "txt"}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
       console.error("Download error:", error);
+    }
+  };
+
+  const viewComments = async (jobId: number) => {
+    try {
+      const response = await fetch(`/api/download/${jobId}/json`);
+      if (!response.ok) throw new Error("Failed to fetch comments");
+      const data = await response.json();
+      setCommentData(data);
+      setShowComments(true);
+    } catch (error) {
+      console.error("View comments error:", error);
     }
   };
 
@@ -190,7 +230,14 @@ export function CommentExtractor({ credentials }: CommentExtractorProps) {
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-3 gap-4">
+              <Button 
+                onClick={() => viewComments(extractionResult.jobId)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <i className="fas fa-eye mr-2"></i>
+                <span>View Comments</span>
+              </Button>
               <Button 
                 onClick={() => downloadFile(extractionResult.jobId, "json")}
                 className="bg-emerald-600 hover:bg-emerald-700"
@@ -231,6 +278,70 @@ export function CommentExtractor({ credentials }: CommentExtractorProps) {
                 >
                   Try Again
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Comment Viewer Modal */}
+        {showComments && commentData && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+            <div className="bg-surface rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-surface-variant">
+              <div className="flex items-center justify-between p-6 border-b border-surface-variant">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-50">{commentData.post.title}</h3>
+                  <p className="text-sm text-slate-400">
+                    by u/{commentData.post.author} • {commentData.comments.length} comments • Score: {commentData.post.score}
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => setShowComments(false)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-slate-400 hover:text-slate-300"
+                >
+                  <i className="fas fa-times text-lg"></i>
+                </Button>
+              </div>
+              
+              <div className="overflow-y-auto max-h-[calc(90vh-120px)] p-6">
+                <div className="space-y-4">
+                  {commentData.comments.map((comment) => (
+                    <div 
+                      key={comment.id} 
+                      className={`border-l-2 border-slate-600 pl-4 ${comment.depth > 0 ? 'ml-' + (comment.depth * 4) : ''}`}
+                      style={{ marginLeft: `${comment.depth * 16}px` }}
+                    >
+                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className="font-medium text-slate-300">u/{comment.author}</span>
+                          <span className="text-xs text-slate-500">•</span>
+                          <span className="text-xs text-slate-500">
+                            {new Date(comment.created_utc * 1000).toLocaleString()}
+                          </span>
+                          <span className="text-xs text-slate-500">•</span>
+                          <span className="text-xs text-slate-500">Score: {comment.score}</span>
+                          {comment.depth > 0 && (
+                            <>
+                              <span className="text-xs text-slate-500">•</span>
+                              <span className="text-xs text-slate-500">Depth: {comment.depth}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">
+                          {comment.body}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {commentData.comments.length === 0 && (
+                  <div className="text-center py-12 text-slate-400">
+                    <i className="fas fa-comment-slash text-4xl mb-4"></i>
+                    <p>No comments found for this post.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
