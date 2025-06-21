@@ -1,6 +1,6 @@
 # Reddit Comment Extractor
 
-Extract and download comments from any Reddit post in JSON and readable text formats. Secure, private, and easy-to-use Reddit comment extraction tool.
+Extract and download comments from any Reddit post in JSON and readable text formats. Secure, private and easy-to-use Reddit comment extraction tool.
 
 ## Features
 - Extract all comments (including nested replies) from any public Reddit post
