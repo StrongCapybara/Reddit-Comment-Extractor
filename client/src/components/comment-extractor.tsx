@@ -304,36 +304,41 @@ export function CommentExtractor({ credentials }: CommentExtractorProps) {
                 </Button>
               </div>
               
-              <div className="overflow-y-auto max-h-[calc(90vh-120px)] p-6">
+              <div className="overflow-y-auto max-h-[calc(90vh-120px)] p-2 sm:p-6">
                 <div className="space-y-4">
-                  {commentData.comments.map((comment) => (
-                    <div 
-                      key={comment.id} 
-                      className={`border-l-2 border-slate-600 pl-4 ${comment.depth > 0 ? 'ml-' + (comment.depth * 4) : ''}`}
-                      style={{ marginLeft: `${comment.depth * 16}px` }}
-                    >
-                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <span className="font-medium text-slate-300">u/{comment.author}</span>
-                          <span className="text-xs text-slate-500">•</span>
-                          <span className="text-xs text-slate-500">
-                            {new Date(comment.created_utc * 1000).toLocaleString()}
-                          </span>
-                          <span className="text-xs text-slate-500">•</span>
-                          <span className="text-xs text-slate-500">Score: {comment.score}</span>
-                          {comment.depth > 0 && (
-                            <>
-                              <span className="text-xs text-slate-500">•</span>
-                              <span className="text-xs text-slate-500">Depth: {comment.depth}</span>
-                            </>
-                          )}
-                        </div>
-                        <div className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">
-                          {comment.body}
+                  {commentData.comments.map((comment) => {
+                    // Limit max indent to 80px, use horizontal scroll for more
+                    const maxIndent = 80; // px
+                    const indent = Math.min(comment.depth * 16, maxIndent);
+                    return (
+                      <div 
+                        key={comment.id} 
+                        className="border-l-2 border-slate-600 pl-3 sm:pl-4"
+                        style={{ marginLeft: indent, overflowX: comment.depth * 16 > maxIndent ? 'auto' : 'visible' }}
+                      >
+                        <div className="bg-slate-800/50 rounded-lg p-3 sm:p-4 border border-slate-700 overflow-x-auto">
+                          <div className="flex flex-wrap items-center space-x-2 mb-2">
+                            <span className="font-medium text-slate-300">u/{comment.author}</span>
+                            <span className="text-xs text-slate-500">•</span>
+                            <span className="text-xs text-slate-500">
+                              {new Date(comment.created_utc * 1000).toLocaleString()}
+                            </span>
+                            <span className="text-xs text-slate-500">•</span>
+                            <span className="text-xs text-slate-500">Score: {comment.score}</span>
+                            {comment.depth > 0 && (
+                              <>
+                                <span className="text-xs text-slate-500">•</span>
+                                <span className="text-xs text-slate-500">Depth: {comment.depth}</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed break-words overflow-wrap break-word" style={{ wordBreak: 'break-word' }}>
+                            {comment.body}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 
                 {commentData.comments.length === 0 && (

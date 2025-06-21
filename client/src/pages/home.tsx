@@ -2,17 +2,10 @@ import { useState } from "react";
 import { RedditSetupInstructions } from "@/components/reddit-setup-instructions";
 import { CredentialsForm } from "@/components/credentials-form";
 import { CommentExtractor } from "@/components/comment-extractor";
-import { ProgressSteps } from "@/components/progress-steps";
 import type { RedditCredentials } from "@shared/schema";
 
 export default function Home() {
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [credentials, setCredentials] = useState<RedditCredentials | null>(null);
-
-  const handleCredentialsSubmit = (creds: RedditCredentials) => {
-    setCredentials(creds);
-    setCurrentStep(3);
-  };
 
   return (
     <div className="bg-slate-900 text-slate-50 font-sans min-h-screen">
@@ -32,29 +25,9 @@ export default function Home() {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
-        {/* Progress Steps */}
-        <ProgressSteps currentStep={currentStep} />
-
-        {/* Step 1: Reddit App Setup Instructions */}
-        {currentStep >= 1 && (
-          <RedditSetupInstructions 
-            onComplete={() => setCurrentStep(2)} 
-            isCompleted={currentStep > 1}
-          />
-        )}
-
-        {/* Step 2: Credentials Form */}
-        {currentStep >= 2 && (
-          <CredentialsForm 
-            onSubmit={handleCredentialsSubmit}
-            isCompleted={currentStep > 2}
-          />
-        )}
-
-        {/* Step 3: Comment Extraction */}
-        {currentStep >= 3 && credentials && (
-          <CommentExtractor credentials={credentials} />
-        )}
+        <RedditSetupInstructions onComplete={() => {}} isCompleted={false} />
+        <CredentialsForm onSubmit={setCredentials} isCompleted={false} />
+        {credentials && <CommentExtractor credentials={credentials} />}
 
         {/* Features Section */}
         <section className="mb-12">
