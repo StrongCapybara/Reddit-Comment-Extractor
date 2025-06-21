@@ -1,10 +1,11 @@
 export interface RedditComment {
   id: string;
+  parent_id: string | null;
   author: string;
   body: string;
   score: number;
   created_utc: number;
-  replies?: RedditComment[];
+  depth: number;
 }
 
 export interface RedditPost {
@@ -39,11 +40,11 @@ export class RedditApi {
       headers: {
         'Authorization': `Basic ${auth}`,
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'RedditCommentExtractor/1.0'
+        'User-Agent': 'Comment Extraction (by u/RedditCommentExtractor)'
       },
       body: new URLSearchParams({
         grant_type: 'client_credentials'
-      })
+      }).toString()
     });
 
     if (!response.ok) {
@@ -52,6 +53,9 @@ export class RedditApi {
 
     const data = await response.json();
     this.accessToken = data.access_token;
+    if (!this.accessToken) {
+      throw new Error('Failed to get access token');
+    }
     return this.accessToken;
   }
 
@@ -70,7 +74,7 @@ export class RedditApi {
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'User-Agent': 'RedditCommentExtractor/1.0'
+        'User-Agent': 'Comment Extraction (by u/RedditCommentExtractor)'
       }
     });
 
@@ -97,30 +101,33 @@ export class RedditApi {
 
     // Parse comments
     const commentsData = data[1].data.children;
-    const comments = this.parseComments(commentsData);
+    const comments = this.parseComments(commentsData, null, 0);
 
     return { post, comments };
   }
 
-  private parseComments(commentsData: any[]): RedditComment[] {
+  private parseComments(commentsData: any[], parentId: string | null = null, depth: number = 0): RedditComment[] {
     const comments: RedditComment[] = [];
 
     for (const item of commentsData) {
       if (item.kind === 't1' && item.data.body && item.data.body !== '[deleted]' && item.data.body !== '[removed]') {
         const comment: RedditComment = {
           id: item.data.id,
+          parent_id: parentId,
           author: item.data.author || '[deleted]',
           body: item.data.body,
           score: item.data.score || 0,
           created_utc: item.data.created_utc,
+          depth: depth,
         };
+
+        comments.push(comment);
 
         // Parse replies if they exist
         if (item.data.replies && item.data.replies.data && item.data.replies.data.children) {
-          comment.replies = this.parseComments(item.data.replies.data.children);
+          const replies = this.parseComments(item.data.replies.data.children, comment.id, depth + 1);
+          comments.push(...replies);
         }
-
-        comments.push(comment);
       }
     }
 

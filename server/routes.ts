@@ -6,11 +6,12 @@ import { z } from "zod";
 
 interface RedditComment {
   id: string;
+  parent_id: string | null;
   author: string;
   body: string;
   score: number;
   created_utc: number;
-  replies?: RedditComment[];
+  depth: number;
 }
 
 interface RedditPost {
@@ -30,7 +31,7 @@ async function getRedditAccessToken(clientId: string, clientSecret: string, user
     headers: {
       'Authorization': `Basic ${auth}`,
       'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': 'RedditCommentExtractor/1.0'
+      'User-Agent': 'Comment Extraction (by u/RedditCommentExtractor)'
     },
     body: new URLSearchParams({
       grant_type: 'client_credentials'
@@ -58,7 +59,7 @@ async function fetchRedditComments(postUrl: string, accessToken: string): Promis
   const response = await fetch(apiUrl, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
-      'User-Agent': 'RedditCommentExtractor/1.0'
+      'User-Agent': 'Comment Extraction (by u/RedditCommentExtractor)'
     }
   });
 
@@ -90,25 +91,28 @@ async function fetchRedditComments(postUrl: string, accessToken: string): Promis
   return { post, comments };
 }
 
-function parseRedditComments(commentsData: any[]): RedditComment[] {
+function parseRedditComments(commentsData: any[], parentId: string | null = null, depth: number = 0): RedditComment[] {
   const comments: RedditComment[] = [];
 
   for (const item of commentsData) {
     if (item.kind === 't1' && item.data.body && item.data.body !== '[deleted]' && item.data.body !== '[removed]') {
       const comment: RedditComment = {
         id: item.data.id,
+        parent_id: parentId,
         author: item.data.author || '[deleted]',
         body: item.data.body,
         score: item.data.score || 0,
         created_utc: item.data.created_utc,
+        depth: depth,
       };
+
+      comments.push(comment);
 
       // Parse replies if they exist
       if (item.data.replies && item.data.replies.data && item.data.replies.data.children) {
-        comment.replies = parseRedditComments(item.data.replies.data.children);
+        const replies = parseRedditComments(item.data.replies.data.children, item.data.id, depth + 1);
+        comments.push(...replies);
       }
-
-      comments.push(comment);
     }
   }
 
@@ -124,26 +128,13 @@ function formatCommentsAsText(post: RedditPost, comments: RedditComment[]): stri
   text += `URL: ${post.url}\n\n`;
   text += "=" .repeat(80) + "\nCOMMENTS\n" + "=".repeat(80) + "\n\n";
 
-  function formatComment(comment: RedditComment, indent: number = 0): string {
-    const prefix = "  ".repeat(indent);
-    let result = `${prefix}Author: u/${comment.author}\n`;
-    result += `${prefix}Score: ${comment.score}\n`;
-    result += `${prefix}Posted: ${new Date(comment.created_utc * 1000).toLocaleString()}\n`;
-    result += `${prefix}Comment:\n${prefix}${comment.body.replace(/\n/g, `\n${prefix}`)}\n\n`;
-
-    if (comment.replies && comment.replies.length > 0) {
-      result += `${prefix}Replies:\n`;
-      for (const reply of comment.replies) {
-        result += formatComment(reply, indent + 1);
-      }
-    }
-
-    return result;
-  }
-
   for (const comment of comments) {
-    text += formatComment(comment);
-    text += "-".repeat(60) + "\n\n";
+    const indent = "    ".repeat(comment.depth); // 4 spaces per depth level like your Python code
+    text += `${indent}Author: ${comment.author}\n`;
+    text += `${indent}Score: ${comment.score}\n`;
+    text += `${indent}Posted: ${new Date(comment.created_utc * 1000).toLocaleString()}\n`;
+    text += `${indent}Comment:\n${indent}${comment.body.replace(/\n/g, `\n${indent}`)}\n`;
+    text += `${indent}${"-".repeat(40)}\n`;
   }
 
   return text;
